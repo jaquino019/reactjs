@@ -1,207 +1,102 @@
-
-import React, { useState } from "react";
+// src/pages/DeleteContact.jsx
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
-const ContactForm = ({ onContactAdded }) => {
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+const DeleteContact = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [contact, setContact] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    contactNumber: "",
-    location: "",
-    registeredDate: "", // Empty so placeholder shows
-  });
-  const [errors, setErrors] = useState({});
+  useEffect(() => {
+    axios
+      .get(`http://localhost:5001/contacts/${id}`)
+      .then((res) => setContact(res.data))
+      .catch((err) => console.error(err));
+  }, [id]);
 
-  const validate = () => {
-    let temp = {};
-
-    // Full Name validation
-    const fullNamePattern = /^[A-Z][a-z]+, [A-Z][a-z]+ [A-Z]\.$/;
-    if (!formData.fullName.trim()) {
-      temp.fullName = "Full Name is required.";
-    } else if (formData.fullName.length > 30) {
-      temp.fullName = "Full Name must not exceed 30 characters.";
-    } else if (!fullNamePattern.test(formData.fullName)) {
-      temp.fullName =
-        "Format must be: Surname, Firstname M.I (e.g., Aquino, Jaime R.)";
-    } else {
-      temp.fullName = "";
-    }
-
-    // Email validation
-    temp.email = /\S+@\S+\.\S+/.test(formData.email)
-      ? ""
-      : "Valid Email is required.";
-
-    // Contact Number validation
-    temp.contactNumber =
-      /^[0-9]{11}$/.test(formData.contactNumber) &&
-      formData.contactNumber.startsWith("09")
-        ? ""
-        : "Contact Number must be 11 digits and start with 09.";
-
-    // Location validation
-    temp.location = formData.location ? "" : "Location is required.";
-
-    // Registered Date validation (must be today)
-    if (!formData.registeredDate) {
-      temp.registeredDate = "Date is required.";
-    } else if (formData.registeredDate !== today) {
-      temp.registeredDate = "Date must be today's date.";
-    } else {
-      temp.registeredDate = "";
-    }
-
-    setErrors(temp);
-    return Object.values(temp).every((x) => x === "");
+  const handleDeleteClick = () => {
+    setShowConfirm(true);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    const cidDate = new Date(formData.registeredDate);
-    const cid =
-      cidDate
-        .toLocaleDateString("en-US", {
-          month: "2-digit",
-          day: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "") + String(Date.now()).slice(-3);
-
-    try {
-      await axios.post("http://localhost:5001/contacts", {
-        ...formData,
-        cid,
-      });
-      setFormData({
-        fullName: "",
-        email: "",
-        contactNumber: "",
-        location: "",
-        registeredDate: "",
-      });
-      if (onContactAdded) onContactAdded();
-    } catch (error) {
-      console.error("Error adding contact:", error);
-    }
+  const handleConfirmDelete = () => {
+    axios
+      .delete(`http://localhost:5001/contacts/${id}`)
+      .then(() => navigate("/"))
+      .catch((err) => console.error(err));
   };
+
+  if (!contact) return <div className="text-white p-4">Loading...</div>;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-white">
-      {/* Full Name */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Full Name</label>
-        <input
-          type="text"
-          placeholder="Surname, Firstname M.I"
-          value={formData.fullName}
-          onChange={(e) =>
-            setFormData({ ...formData, fullName: e.target.value })
-          }
-          maxLength={30}
-          className="w-full p-2 rounded bg-white/10 text-white placeholder-gray-300"
-        />
-        {errors.fullName && (
-          <p className="text-red-300 text-sm">{errors.fullName}</p>
-        )}
-      </div>
+    <div className="min-h-screen flex flex-col bg-gradient-to-r from-purple-800 via-purple-600 to-pink-500">
+      <Header />
+      <main className="flex-grow flex items-center justify-center p-6">
+        <div className="p-6 text-white bg-white bg-opacity-10 rounded-lg shadow-lg w-full max-w-2xl mx-auto">
+          <h2 className="text-xl font-bold mb-6">Delete Contact</h2>
 
-      {/* Email */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Email Address</label>
-        <input
-          type="email"
-          placeholder="example@email.com"
-          value={formData.email}
-          onChange={(e) =>
-            setFormData({ ...formData, email: e.target.value })
-          }
-          className="w-full p-2 rounded bg-white/10 text-white placeholder-gray-300"
-        />
-        {errors.email && (
-          <p className="text-red-300 text-sm">{errors.email}</p>
-        )}
-      </div>
+          <div className="space-y-3 text-lg">
+            <p><strong>CID:</strong> {contact.cid}</p>
+            <p><strong>Full Name:</strong> {contact.fullName}</p>
+            <p><strong>Email Address:</strong> {contact.email}</p>
+            <p><strong>Contact No:</strong> {contact.contactNumber}</p>
+            <p><strong>Location:</strong> {contact.location}</p>
+            <p><strong>Date Created:</strong> {contact.registeredDate}</p>
+          </div>
 
-      {/* Contact Number */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Contact Number</label>
-        <input
-          type="text"
-          placeholder="eg. 09123456789"
-          value={formData.contactNumber}
-          onChange={(e) =>
-            setFormData({ ...formData, contactNumber: e.target.value })
-          }
-          className="w-full p-2 rounded bg-white/10 text-white placeholder-gray-300"
-        />
-        {errors.contactNumber && (
-          <p className="text-red-300 text-sm">{errors.contactNumber}</p>
-        )}
-      </div>
+          <div className="mt-6">
+            <p className="text-red-300 mb-4">
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteClick}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+              >
+               Delete
+              </button>
+              <button
+                onClick={() => navigate(-1)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
 
-      {/* Location */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Location</label>
-        <select
-          value={formData.location}
-          onChange={(e) =>
-            setFormData({ ...formData, location: e.target.value })
-          }
-          className="w-full p-2 rounded bg-white/10 text-white"
-          style={{
-            backgroundColor: "rgba(255,255,255,0.15)",
-            color: "white",
-          }}
-        >
-          <option value="" className="bg-gray-800 text-white">
-            Select Location
-          </option>
-          <option value="Manila" className="bg-gray-800 text-white">
-            Manila
-          </option>
-          <option value="Cebu" className="bg-gray-800 text-white">
-            Cebu
-          </option>
-        </select>
-        {errors.location && (
-          <p className="text-red-300 text-sm">{errors.location}</p>
-        )}
-      </div>
-
-      {/* Register Date */}
-      <div>
-        <label className="block text-sm font-medium mb-1">
-          Registered Date
-        </label>
-        <input
-          type="date"
-          value={formData.registeredDate}
-          onChange={(e) =>
-            setFormData({ ...formData, registeredDate: e.target.value })
-          }
-          min={today}
-          max={today}
-          className="w-full p-2 rounded bg-white/10 text-white placeholder-gray-300"
-        />
-        {errors.registeredDate && (
-          <p className="text-red-300 text-sm">{errors.registeredDate}</p>
-        )}
-      </div>
-
-      {/* Submit */}
-      <button
-        type="submit"
-        className="w-full py-2 rounded bg-purple-600 hover:bg-purple-700 transition"
-      >
-        Add Contact
-      </button>
-    </form>
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white text-black rounded-lg p-6 max-w-lg w-full">
+            <h3 className="text-lg font-bold mb-4 text-red-600">Confirm Deletion</h3>
+            <p className="mb-4">
+              Are you sure you want to delete <strong>{contact.fullName}</strong>?  
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmDelete}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
+              >
+                Yes, Delete
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
-export default ContactForm;
+export default DeleteContact;
